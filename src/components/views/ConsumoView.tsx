@@ -1,44 +1,88 @@
-import React, { useState } from 'react';
-import {
-  Zap,
-  TrendingDown,
-  DollarSign,
-  Leaf,
-  Calendar,
-  Clock,
-  ShieldCheck,
-  BarChart3,
-  ArrowUpRight,
-} from 'lucide-react';
-import { Luminaria } from '../../types';
+import React, { useState, useMemo } from 'react';
+import { Zap, ShieldCheck } from 'lucide-react';
+import { Luminaria, ReglaAntiOlvido } from '../../types';
 
 interface ConsumoViewProps {
   lights: Luminaria[];
+  rules?: ReglaAntiOlvido[];
 }
 
-export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
+export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights, rules = [] }) => {
   const [period, setPeriod] = useState<'hoy' | 'semana' | 'mes'>('semana');
 
-  const currentWatts = lights
-    .filter((l) => l.isOn)
-    .reduce((sum, l) => sum + l.powerWatts, 0)
-    .toFixed(1);
+  const currentWattsNum = useMemo(
+    () => lights.filter((l) => l.isOn).reduce((sum, l) => sum + l.powerWatts, 0),
+    [lights]
+  );
+  const currentWatts = currentWattsNum.toFixed(1);
 
-  // Hourly consumption data for visual chart
+  const weeklySavedRules = useMemo(
+    () => rules.filter((r) => r.isActive).reduce((sum, r) => sum + r.savedKwhWeekly, 0),
+    [rules]
+  );
+
+  // Escalado realista según potencia instantánea activa y periodo
+  const periodHours = period === 'hoy' ? 4.5 : period === 'semana' ? 31.5 : 135;
+  const baselineKwh = period === 'hoy' ? 0.65 : period === 'semana' ? 4.2 : 17.5;
+  const activeKwh = (currentWattsNum / 1000) * periodHours;
+  const netKwh = (baselineKwh + activeKwh).toFixed(2);
+  const estEuro = ((baselineKwh + activeKwh) * 0.28).toFixed(2);
+
+  const savedKwhNum =
+    period === 'hoy'
+      ? Math.max(0.25, weeklySavedRules / 7)
+      : period === 'semana'
+      ? Math.max(1.4, weeklySavedRules)
+      : Math.max(6.0, weeklySavedRules * 4.28);
+  const savedKwh = savedKwhNum.toFixed(2);
+  const co2SavedKg = (savedKwhNum * 0.42).toFixed(1);
+  const avoidedPct = Math.min(62, Math.round((savedKwhNum / (savedKwhNum + baselineKwh + activeKwh)) * 100));
+
+  // Desglose dinámico por estancia usando todas las luminarias reales
+  const roomBreakdown = useMemo(() => {
+    const roomsMeta: {
+      key: Luminaria['roomType'];
+      label: string;
+      colorClass: string;
+      textColor: string;
+    }[] = [
+      { key: 'estudio', label: 'Sala de Estudio', colorClass: 'bg-amber-500', textColor: 'text-amber-400' },
+      { key: 'cocina', label: 'Cocina & Barra', colorClass: 'bg-cyan-400', textColor: 'text-cyan-400' },
+      { key: 'dormitorio', label: 'Habitación Principal', colorClass: 'bg-purple-400', textColor: 'text-purple-400' },
+      { key: 'salon', label: 'Salón / Comedor', colorClass: 'bg-emerald-400', textColor: 'text-emerald-400' },
+    ];
+
+    return roomsMeta
+      .map((meta) => {
+        const roomLights = lights.filter((l) => l.roomType === meta.key);
+        const watts = roomLights.filter((l) => l.isOn).reduce((sum, l) => sum + l.powerWatts, 0);
+        const pct = currentWattsNum > 0 ? Math.round((watts / currentWattsNum) * 100) : 0;
+        return {
+          ...meta,
+          count: roomLights.length,
+          watts,
+          pct,
+        };
+      })
+      .filter((r) => r.count > 0 || r.watts > 0);
+  }, [lights, currentWattsNum]);
+
+  // Curva de carga ajustada al consumo actual
+  const scaleFactor = Math.max(0.45, currentWattsNum / 52.4);
   const hourlyData = [
-    { hour: '06h', consumed: 12, saved: 0 },
-    { hour: '08h', consumed: 45, saved: 15 },
-    { hour: '10h', consumed: 28, saved: 35 },
-    { hour: '12h', consumed: 15, saved: 40 },
-    { hour: '14h', consumed: 18, saved: 25 },
-    { hour: '16h', consumed: 32, saved: 30 },
-    { hour: '18h', consumed: 68, saved: 42 },
-    { hour: '20h', consumed: 85, saved: 60 },
-    { hour: '22h', consumed: 54, saved: 90 },
-    { hour: '00h', consumed: 8, saved: 110 },
+    { hour: '06h', consumed: Math.round(12 * scaleFactor), saved: 4 },
+    { hour: '08h', consumed: Math.round(42 * scaleFactor), saved: 15 },
+    { hour: '10h', consumed: Math.round(28 * scaleFactor), saved: 35 },
+    { hour: '12h', consumed: Math.round(16 * scaleFactor), saved: 40 },
+    { hour: '14h', consumed: Math.round(20 * scaleFactor), saved: 25 },
+    { hour: '16h', consumed: Math.round(32 * scaleFactor), saved: 30 },
+    { hour: '18h', consumed: Math.round(64 * scaleFactor), saved: 42 },
+    { hour: '20h', consumed: Math.round(78 * scaleFactor), saved: 60 },
+    { hour: '22h', consumed: Math.round(52 * scaleFactor), saved: 88 },
+    { hour: '00h', consumed: Math.round(10 * scaleFactor), saved: 105 },
   ];
 
-  const maxVal = 120;
+  const maxVal = Math.max(120, ...hourlyData.map((d) => Math.max(d.consumed, d.saved)));
 
   return (
     <div className="space-y-5 pb-24 animate-fade-in text-left">
@@ -49,7 +93,7 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
             Telemetría de Consumo
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Métricas de potencia y auditoría de consumos fantasma
+            Métricas en vivo desde luminarias conectadas y auditoría Anti-Olvido
           </p>
         </div>
 
@@ -62,8 +106,9 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
       {/* Period Selector Tabs */}
       <div className="flex items-center gap-1 p-1 bg-[#101728] border border-slate-800 rounded-xl">
         <button
+          type="button"
           onClick={() => setPeriod('hoy')}
-          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             period === 'hoy'
               ? 'bg-amber-500 text-slate-950 shadow-sm'
               : 'text-slate-400 hover:text-white'
@@ -72,8 +117,9 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
           Hoy
         </button>
         <button
+          type="button"
           onClick={() => setPeriod('semana')}
-          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             period === 'semana'
               ? 'bg-amber-500 text-slate-950 shadow-sm'
               : 'text-slate-400 hover:text-white'
@@ -82,8 +128,9 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
           Esta Semana
         </button>
         <button
+          type="button"
           onClick={() => setPeriod('mes')}
-          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             period === 'mes'
               ? 'bg-amber-500 text-slate-950 shadow-sm'
               : 'text-slate-400 hover:text-white'
@@ -100,11 +147,11 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
             Consumo Neto
           </span>
           <div className="text-xl font-extrabold text-white font-mono mt-1">
-            {period === 'hoy' ? '1.4' : period === 'semana' ? '9.8' : '41.2'}{' '}
+            {netKwh}{' '}
             <span className="text-xs font-normal text-slate-400">kWh</span>
           </div>
           <span className="text-[10px] text-slate-400 block mt-1">
-            {period === 'hoy' ? '~0.39 €' : period === 'semana' ? '~2.74 €' : '~11.53 €'}
+            ~{estEuro} € ({lights.filter((l) => l.isOn).length} activas)
           </span>
         </div>
 
@@ -113,11 +160,11 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
             Ahorro Anti-Olvido
           </span>
           <div className="text-xl font-extrabold text-emerald-400 font-mono mt-1">
-            {period === 'hoy' ? '0.35' : period === 'semana' ? '2.10' : '8.90'}{' '}
+            {savedKwh}{' '}
             <span className="text-xs font-normal text-slate-400">kWh</span>
           </div>
           <span className="text-[10px] text-emerald-400 font-bold block mt-1">
-            ↘ -34% evitado
+            ↘ -{avoidedPct}% evitado
           </span>
         </div>
 
@@ -126,7 +173,7 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
             Huella CO₂
           </span>
           <div className="text-xl font-extrabold text-cyan-400 font-mono mt-1">
-            -4.2 <span className="text-xs font-normal text-slate-400">kg</span>
+            -{co2SavedKg} <span className="text-xs font-normal text-slate-400">kg</span>
           </div>
           <span className="text-[10px] text-slate-400 block mt-1">
             Compensado
@@ -139,10 +186,10 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Curva de Carga & Cortes de Ausencia
+              Curva de Carga &amp; Cortes de Ausencia
             </h2>
             <p className="text-[11px] text-slate-400">
-              Vatios promedio por franja horaria
+              Vatios promedio por franja horaria (ajustado a {currentWatts}W actuales)
             </p>
           </div>
 
@@ -158,22 +205,19 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
           </div>
         </div>
 
-        {/* Bar chart representation */}
         <div className="pt-4 flex items-end justify-between gap-1.5 h-40 border-b border-slate-800 px-1">
           {hourlyData.map((item, idx) => {
-            const hConsumed = (item.consumed / maxVal) * 100;
-            const hSaved = (item.saved / maxVal) * 100;
+            const hConsumed = Math.min(100, (item.consumed / maxVal) * 100);
+            const hSaved = Math.min(100, (item.saved / maxVal) * 100);
 
             return (
               <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
                 <div className="w-full max-w-[18px] flex items-end justify-center gap-0.5 h-full">
-                  {/* Consumed bar */}
                   <div
                     style={{ height: `${hConsumed}%` }}
                     className="w-1/2 bg-cyan-500/80 group-hover:bg-cyan-400 rounded-t transition-all"
                     title={`Consumo: ${item.consumed}W`}
                   />
-                  {/* Saved bar */}
                   <div
                     style={{ height: `${hSaved}%` }}
                     className="w-1/2 bg-emerald-500/80 group-hover:bg-emerald-400 rounded-t transition-all"
@@ -189,45 +233,34 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
         </div>
       </div>
 
-      {/* Desglose por Estancias */}
+      {/* Desglose dinámico por Estancias */}
       <div className="p-4 rounded-2xl bg-[#101728] border border-slate-800 space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-          Distribución de Gasto por Estancia
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+            Distribución de Gasto por Estancia (En Vivo)
+          </h2>
+          <span className="text-[11px] font-mono text-slate-400">{currentWatts}W total</span>
+        </div>
 
         <div className="space-y-2.5">
-          {/* Estudio */}
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-white font-semibold">Sala de Estudio</span>
-              <span className="text-amber-400 font-mono font-bold">42% (22.4W)</span>
+          {roomBreakdown.map((room) => (
+            <div key={room.key}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-white font-semibold">
+                  {room.label} ({room.count})
+                </span>
+                <span className={`${room.textColor} font-mono font-bold`}>
+                  {room.pct}% ({room.watts.toFixed(1)}W)
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className={`h-full ${room.colorClass} rounded-full transition-all duration-300`}
+                  style={{ width: `${room.pct}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full" style={{ width: '42%' }} />
-            </div>
-          </div>
-
-          {/* Cocina */}
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-white font-semibold">Cocina & Barra</span>
-              <span className="text-cyan-400 font-mono font-bold">31% (16.0W)</span>
-            </div>
-            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-              <div className="h-full bg-cyan-400 rounded-full" style={{ width: '31%' }} />
-            </div>
-          </div>
-
-          {/* Dormitorio */}
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-white font-semibold">Habitación Principal</span>
-              <span className="text-purple-400 font-mono font-bold">27% (14.0W)</span>
-            </div>
-            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-              <div className="h-full bg-purple-400 rounded-full" style={{ width: '27%' }} />
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -241,7 +274,9 @@ export const ConsumoView: React.FC<ConsumoViewProps> = ({ lights }) => {
             Auditoría de Salud Energética
           </h3>
           <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
-            Se han prevenido <strong>38.5 horas</strong> de consumo fantasma este mes gracias a los 14 cortes automáticos ejecutados por los sensores mmWave.
+            {rules.filter((r) => r.isActive).length} reglas Anti-Olvido activas están protegiendo{' '}
+            <strong>{lights.length} luminarias</strong> y ahorrando aproximadamente{' '}
+            <strong>{weeklySavedRules.toFixed(1)} kWh/sem</strong>.
           </p>
         </div>
       </div>

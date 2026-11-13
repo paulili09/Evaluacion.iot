@@ -15,15 +15,17 @@ import {
   CheckCircle2,
   Terminal,
 } from 'lucide-react';
-import { ReglaAntiOlvido } from '../../types';
+import { ReglaAntiOlvido, Luminaria } from '../../types';
 
 interface NuevaReglaModalProps {
+  lights?: Luminaria[];
   onClose: () => void;
   onSaveRule: (rule: Partial<ReglaAntiOlvido>) => void;
   onOpenSandbox: () => void;
 }
 
 export const NuevaReglaModal: React.FC<NuevaReglaModalProps> = ({
+  lights = [],
   onClose,
   onSaveRule,
   onOpenSandbox,
@@ -35,6 +37,7 @@ export const NuevaReglaModal: React.FC<NuevaReglaModalProps> = ({
   const [actionType, setActionType] = useState<'warning_with_snooze' | 'direct_cut'>('warning_with_snooze');
   const [softDimming, setSoftDimming] = useState<boolean>(true);
 
+  const customLightsCount = Math.max(4, lights.length);
   const devices = [
     {
       id: 'lampara-estudio',
@@ -45,33 +48,47 @@ export const NuevaReglaModal: React.FC<NuevaReglaModalProps> = ({
     {
       id: 'hab-principal',
       name: 'Hab. Principal',
-      desc: '2 Bombillos Mesh',
+      desc: 'Plafón & Cabecero',
       icon: Bed,
     },
     {
       id: 'toda-casa',
       name: 'Toda la Casa',
-      desc: '6 Relés Centrales',
+      desc: `${customLightsCount} Luminarias Conectadas`,
       icon: Home,
     },
     {
       id: 'cocina-barra',
       name: 'Cocina & Barra',
-      desc: 'Tira COB 24V',
+      desc: 'Focos Isla + Tira LED',
       icon: Utensils,
     },
   ];
 
+  // Cálculo dinámico de impacto según dispositivo objetivo, tiempo de espera y condiciones
+  const baseKwh = selectedDevice === 'toda-casa' ? 3.4 : selectedDevice === 'cocina-barra' ? 2.2 : 1.9;
+  const speedMultiplier = waitMinutes <= 15 ? 1.25 : waitMinutes <= 30 ? 1.0 : 0.78;
+  const geoMultiplier = outsideGeofence ? 1.2 : 1.0;
+  const nightMultiplier = onlyNight ? 0.92 : 1.15;
+  const estKwhWeekly = Number((baseKwh * speedMultiplier * geoMultiplier * nightMultiplier).toFixed(2));
+  const estUsdWeekly = Number((estKwhWeekly * 0.2).toFixed(2));
+  const estUsdAnnual = (estUsdWeekly * 52).toFixed(2);
+  const estWasteReduction = Math.min(58, Math.round(28 * speedMultiplier * geoMultiplier));
+
+  const selectedObj = devices.find((d) => d.id === selectedDevice) || devices[0];
+
   const handleSave = () => {
     onSaveRule({
       targetDevice: selectedDevice,
+      deviceLabel: selectedObj.name,
+      triggerType: outsideGeofence ? 'geofence' : 'pir_mmwave',
       waitMinutes,
       onlyNight,
       outsideGeofence,
       actionType,
       softDimming,
-      savedKwhWeekly: 2.1,
-      savedUsdWeekly: 0.42,
+      savedKwhWeekly: estKwhWeekly,
+      savedUsdWeekly: estUsdWeekly,
       isActive: true,
     });
     onClose();
@@ -441,10 +458,10 @@ export const NuevaReglaModal: React.FC<NuevaReglaModalProps> = ({
               Energía recuperada
             </span>
             <div className="text-lg font-extrabold text-white font-mono mt-0.5">
-              ~2.1 <span className="text-xs font-normal text-slate-400">kWh/sem</span>
+              ~{estKwhWeekly} <span className="text-xs font-normal text-slate-400">kWh/sem</span>
             </div>
             <span className="text-[10px] text-emerald-400 font-semibold block mt-1">
-              ↘ -34% desperdicio
+              ↘ -{estWasteReduction}% desperdicio
             </span>
           </div>
 
@@ -453,10 +470,10 @@ export const NuevaReglaModal: React.FC<NuevaReglaModalProps> = ({
               Costo evitado
             </span>
             <div className="text-lg font-extrabold text-white font-mono mt-0.5">
-              $0.42 <span className="text-xs font-normal text-slate-400">USD/sem</span>
+              ${estUsdWeekly} <span className="text-xs font-normal text-slate-400">USD/sem</span>
             </div>
             <span className="text-[10px] text-slate-400 font-medium block mt-1">
-              ~$21.84 USD al año
+              ~${estUsdAnnual} USD al año
             </span>
           </div>
         </div>

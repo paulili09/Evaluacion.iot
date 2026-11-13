@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Download, FileCode, Folder, ExternalLink, Code2 } from 'lucide-react';
+import { X, Copy, Check, Download, FileCode, Folder, Code2 } from 'lucide-react';
 
 interface KotlinCodeViewerModalProps {
   onClose: () => void;
@@ -7,8 +7,258 @@ interface KotlinCodeViewerModalProps {
 
 export const KotlinCodeViewerModal: React.FC<KotlinCodeViewerModalProps> = ({ onClose }) => {
   const [copiedFile, setCopiedFile] = useState<string | null>(null);
+  const liveOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://lumicontrol.iot';
 
   const files = [
+    {
+      id: 'webview_apk',
+      name: 'WebViewAppActivity.kt (APK Instantáneo)',
+      path: 'app/src/main/java/com/lumicontrol/iot/WebViewAppActivity.kt',
+      lang: 'kotlin',
+      code: `package com.lumicontrol.iot
+
+import android.annotation.SuppressLint
+import android.os.Bundle
+import android.webkit.*
+import androidx.activity.ComponentActivity
+
+// APK Android Studio listo para abrir la app en vivo con soporte Bluetooth/USB y DOM Storage
+class WebViewAppActivity : ComponentActivity() {
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val webView = WebView(this)
+        setContentView(webView)
+
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+        }
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                request.grant(request.resources)
+            }
+        }
+        webView.webViewClient = WebViewClient()
+        webView.loadUrl("${liveOrigin}")
+    }
+}`
+    },
+    {
+      id: 'login_screen',
+      name: 'LoginScreen.kt (Auth JWT)',
+      path: 'app/src/main/java/com/lumicontrol/iot/ui/screens/LoginScreen.kt',
+      lang: 'kotlin',
+      code: `package com.lumicontrol.iot.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun LoginScreen(
+    onLoginSubmit: (username: String, password: String) -> Unit,
+    isLoading: Boolean,
+    errorMsg: String?
+) {
+    var username by remember { mutableStateOf("sofia") }
+    var password by remember { mutableStateOf("lumi2026") }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("LumiControl IoT", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Usuario") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Contraseña") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        errorMsg?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = { onLoginSubmit(username, password) },
+            enabled = !isLoading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (isLoading) "Autenticando..." else "Iniciar Sesión JWT")
+        }
+    }
+}`
+    },
+    {
+      id: 'dual_device_sync',
+      name: 'DualDeviceSyncRepository.kt',
+      path: 'app/src/main/java/com/lumicontrol/iot/data/DualDeviceSyncRepository.kt',
+      lang: 'kotlin',
+      code: `package com.lumicontrol.iot.data
+
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
+
+// Almacenamiento local SQLite + Sincronización con API REST entre 2 dispositivos Android
+class SensorDbHelper(context: Context) : SQLiteOpenHelper(context, "lumi_sensors.db", null, 1) {
+    override fun onCreate(db: SQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS sensor_readings (
+                id TEXT PRIMARY KEY,
+                sensor_type TEXT NOT NULL,
+                zone TEXT NOT NULL,
+                value REAL NOT NULL,
+                device_id TEXT NOT NULL,
+                channel TEXT NOT NULL,
+                timestamp TEXT NOT NULL
+            )
+        """.trimIndent())
+    }
+    override fun onUpgrade(db: SQLiteDatabase, oldV: Int, newV: Int) {}
+}
+
+class DualDeviceSyncRepository(
+    private val dbHelper: SensorDbHelper,
+    private val cryptoHelper: SecurityCryptoHelper,
+    private val baseUrl: String = "${liveOrigin}"
+) {
+    suspend fun syncCommandAcrossDevices(
+        deviceId: String,
+        channel: String, // "bluetooth" o "wifi"
+        command: String,
+        targetLightId: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val token = cryptoHelper.getAccessToken() ?: return@withContext false
+        val conn = (URL("\$baseUrl/api/dispositivos/sync/").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Authorization", "Bearer \$token")
+            setRequestProperty("Content-Type", "application/json")
+            doOutput = true
+        }
+        val body = """{"fromDeviceId":"\$deviceId","channel":"\$channel","command":"\$command","targetLightId":"\$targetLightId"}"""
+        conn.outputStream.use { it.write(body.toByteArray()) }
+        conn.responseCode in 200..299
+    }
+}`
+    },
+    {
+      id: 'iso27400_crypto',
+      name: 'SecurityCryptoHelper.kt (ISO 27400)',
+      path: 'app/src/main/java/com/lumicontrol/iot/security/SecurityCryptoHelper.kt',
+      lang: 'kotlin',
+      code: `package com.lumicontrol.iot.security
+
+import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+
+// Cumplimiento ISO/IEC 27400: Cifrado AES-256-GCM en almacenamiento local de credenciales y tokens JWT
+class SecurityCryptoHelper(context: Context) {
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val securePrefs = EncryptedSharedPreferences.create(
+        context,
+        "lumi_secure_jwt_prefs",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    fun saveTokens(access: String, refresh: String) {
+        securePrefs.edit()
+            .putString("jwt_access", access)
+            .putString("jwt_refresh", refresh)
+            .apply()
+    }
+
+    fun getAccessToken(): String? = securePrefs.getString("jwt_access", null)
+}`
+    },
+    {
+      id: 'android_manifest',
+      name: 'AndroidManifest.xml (Permisos)',
+      path: 'app/src/main/AndroidManifest.xml',
+      lang: 'xml',
+      code: `<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- ISO 27400: Tráfico cifrado HTTPS obligatorio (usesCleartextTraffic=false) -->
+    <application
+        android:usesCleartextTraffic="false"
+        android:label="LumiControl IoT">
+        <activity android:name=".MainActivity" android:exported="true" />
+    </application>
+</manifest>`
+    },
+    {
+      id: 'usb_cable_manager',
+      name: 'UsbCableManager.kt (Cable USB)',
+      path: 'app/src/main/java/com/lumicontrol/iot/data/UsbCableManager.kt',
+      lang: 'kotlin',
+      code: `package com.lumicontrol.iot.data
+
+import android.content.Context
+import android.hardware.usb.*
+import kotlinx.coroutines.*
+
+// Sincronización directa por Cable USB / OTG entre teléfono Android y hardware IoT o PC (ADB reverse)
+class UsbCableManager(private val context: Context) {
+    private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+    private var connection: UsbDeviceConnection? = null
+    private var endpointOut: UsbEndpoint? = null
+
+    fun listConnectedUsbDevices(): List<UsbDevice> =
+        usbManager.deviceList.values.toList()
+
+    fun openUsbChannel(device: UsbDevice): Boolean {
+        if (!usbManager.hasPermission(device)) return false
+        val usbInterface = device.getInterface(0)
+        val conn = usbManager.openDevice(device) ?: return false
+        conn.claimInterface(usbInterface, true)
+        for (i in 0 until usbInterface.endpointCount) {
+            val ep = usbInterface.getEndpoint(i)
+            if (ep.direction == UsbConstants.USB_DIR_OUT) endpointOut = ep
+        }
+        connection = conn
+        return true
+    }
+
+    suspend fun sendCommandOverCable(cmd: String): Boolean = withContext(Dispatchers.IO) {
+        val data = "\$cmd\\n".toByteArray()
+        val conn = connection ?: return@withContext false
+        val ep = endpointOut ?: return@withContext false
+        conn.bulkTransfer(ep, data, data.size, 1000) >= 0
+    }
+}`
+    },
     {
       id: 'main_activity',
       name: 'MainActivity.kt',
@@ -513,6 +763,19 @@ dependencies {
     setTimeout(() => setCopiedFile(null), 2500);
   };
 
+  const handleDownload = (filenamePath: string, text: string) => {
+    const baseName = filenamePath.split('/').pop() || 'LumiControl.kt';
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = baseName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in text-left">
       <div className="w-full max-w-4xl bg-[#0E1526] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -525,21 +788,22 @@ dependencies {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-extrabold text-white">
-                  Proyecto Android en Kotlin & Jetpack Compose
+                  Proyecto Android en Kotlin &amp; Jetpack Compose
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-[10px] font-bold">
-                  Generado en /android/
+                  /android/ + APK
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Estructura de arquitectura MVI + Coroutines Flow + Material 3 lista para Android Studio
+                Arquitectura MVI + Coroutines Flow + WebView/BLE listo para Android Studio
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 hover:text-white"
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -557,8 +821,9 @@ dependencies {
             {files.map((file) => (
               <button
                 key={file.id}
+                type="button"
                 onClick={() => setSelectedFileId(file.id)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
                   selectedFileId === file.id
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
@@ -573,28 +838,38 @@ dependencies {
           {/* Code Viewer */}
           <div className="flex-1 flex flex-col bg-[#070B14] overflow-hidden">
             {/* Action toolbar */}
-            <div className="px-4 py-2.5 bg-[#0C1220] border-b border-slate-800/80 flex items-center justify-between text-xs">
+            <div className="px-4 py-2.5 bg-[#0C1220] border-b border-slate-800/80 flex items-center justify-between gap-2 text-xs">
               <span className="font-mono text-slate-400 text-[11px] truncate">
                 {currentFile.path}
               </span>
 
-              <button
-                type="button"
-                onClick={() => handleCopy(currentFile.code)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition-colors active:scale-95"
-              >
-                {copiedFile === currentFile.id ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">Copiado</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Código</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleDownload(currentFile.path, currentFile.code)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-semibold transition-colors active:scale-95 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(currentFile.code)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition-colors active:scale-95 cursor-pointer"
+                >
+                  {copiedFile === currentFile.id ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">Copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Code container */}
@@ -606,10 +881,11 @@ dependencies {
 
         {/* Footer */}
         <div className="p-4 bg-[#10182C] border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span>Los archivos también están guardados en tu espacio de trabajo en <code>/android/...</code></span>
+          <span>Archivos disponibles en <code>/android/</code> y listos para descargar en Android Studio</span>
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer"
           >
             Cerrar Visor
           </button>

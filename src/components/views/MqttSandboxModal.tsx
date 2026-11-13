@@ -5,12 +5,16 @@ interface MqttSandboxModalProps {
   onClose: () => void;
   onTriggerAbsenceAlert: () => void;
   onTurnOffAll: () => void;
+  onToggleMainLight?: (turnOn: boolean) => void | Promise<void>;
+  onResetMotionTimer?: () => void;
 }
 
 export const MqttSandboxModal: React.FC<MqttSandboxModalProps> = ({
   onClose,
   onTriggerAbsenceAlert,
   onTurnOffAll,
+  onToggleMainLight,
+  onResetMotionTimer,
 }) => {
   const [activeSimulation, setActiveSimulation] = useState<string | null>(null);
   const [simLogs, setSimLogs] = useState<string[]>([
@@ -41,35 +45,38 @@ export const MqttSandboxModal: React.FC<MqttSandboxModalProps> = ({
 
     runSimulation(`Control Luz 1 (${actionLabel})`, [
       {
-        delay: 200,
+        delay: 180,
         log: `[ANDROID TX] Usuario pulsó botón en app -> PUB hogar/luz1/comando "${actionLabel}"`,
       },
       {
-        delay: 500,
+        delay: 420,
         log: `[BROKER MQTT] Mensaje entregado a ESP32 suscrito a "hogar/luz1/comando" (QoS 1)`,
       },
       {
-        delay: 800,
+        delay: 700,
         log: `[ESP32 HW] ESP32 procesó comando: digitalWrite(RELAY_PIN, ${encender ? 'HIGH' : 'LOW'}) ejecutado`,
+        action: () => {
+          onToggleMainLight?.(encender);
+        },
       },
       {
-        delay: 1100,
+        delay: 980,
         log: `[ESP32 TX] ESP32 publica nuevo estado real -> PUB hogar/luz1/estado "${statusFeedback}"`,
       },
       {
-        delay: 1400,
-        log: `[ANDROID RX] App recibe "hogar/luz1/estado" -> StateFlow actualizado: Luz 1 ${statusFeedback}`,
+        delay: 1200,
+        log: `[ANDROID RX] App recibe "hogar/luz1/estado" -> API + Casa 3D actualizadas: Luz 1 ${statusFeedback}`,
       },
     ]);
   };
 
   const simulateProlongedAbsence = () => {
     runSimulation('Ausencia Prolongada (90 min)', [
-      { delay: 300, log: 'PUB -> hogar/estudio/sensor/pir {"motion":0, "duration_min":90}' },
-      { delay: 600, log: 'EVAL -> Regla Anti-Olvido #1 matched (Umbral: 20 min superado)' },
-      { delay: 900, log: 'PUSH -> Enviando notificación Heads-Up al móvil de Sofía...' },
+      { delay: 250, log: 'PUB -> hogar/estudio/sensor/pir {"motion":0, "duration_min":90}' },
+      { delay: 550, log: 'EVAL -> Regla Anti-Olvido #1 matched (Umbral: 20 min superado)' },
+      { delay: 850, log: 'PUSH -> Enviando notificación Heads-Up al dispositivo móvil vinculado...' },
       {
-        delay: 1200,
+        delay: 1150,
         log: 'ALERTA ACTIVADA -> Lámpara Estudio marcada como olvidada',
         action: onTriggerAbsenceAlert,
       },
@@ -78,12 +85,12 @@ export const MqttSandboxModal: React.FC<MqttSandboxModalProps> = ({
 
   const simulateGeofenceExit = () => {
     runSimulation('Salida de Geocerca (Fuera de Casa)', [
-      { delay: 400, log: 'SUB -> hogar/geocerca {"ssid":"LumiNet_5G", "status":"DISCONNECTED"}' },
-      { delay: 800, log: 'ROUTER -> Ningún dispositivo registrado en la LAN' },
-      { delay: 1200, log: 'CMD -> PUB hogar/luz1/comando "APAGAR"' },
+      { delay: 300, log: 'SUB -> hogar/geocerca {"ssid":"LumiNet_5G", "status":"DISCONNECTED"}' },
+      { delay: 650, log: 'ROUTER -> Ningún dispositivo registrado en la LAN' },
+      { delay: 950, log: 'CMD -> PUB hogar/luz1/comando "APAGAR"' },
       {
-        delay: 1500,
-        log: 'EXEC -> Relé ESP32 conmutado a OFF (0.0 W)',
+        delay: 1250,
+        log: 'EXEC -> Relé ESP32 conmutado a OFF (0.0 W) vía API REST',
         action: onTurnOffAll,
       },
     ]);
@@ -91,9 +98,15 @@ export const MqttSandboxModal: React.FC<MqttSandboxModalProps> = ({
 
   const simulatePIRMovement = () => {
     runSimulation('Detección de Movimiento PIR', [
-      { delay: 300, log: 'PUB -> hogar/estudio/pir {"motion":1, "dist_m":1.2, "vel":0.15}' },
-      { delay: 700, log: 'STATE -> Temporizador de inactividad reiniciado a 0 min' },
-      { delay: 1000, log: 'ACK -> Estado seguro de ocupación humana confirmado' },
+      { delay: 250, log: 'PUB -> hogar/estudio/pir {"motion":1, "dist_m":1.2, "vel":0.15}' },
+      { delay: 600, log: 'STATE -> Temporizador de inactividad reiniciado a 0 min' },
+      {
+        delay: 900,
+        log: 'ACK -> Estado seguro de ocupación humana confirmado (Alerta limpiada)',
+        action: () => {
+          onResetMotionTimer?.();
+        },
+      },
     ]);
   };
 

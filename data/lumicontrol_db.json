@@ -1,0 +1,309 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "sofia",
+      "passwordSalt": "608515dcc4290ec0c5f3925eb5b802b4",
+      "passwordHash": "bf2709bc199234bcd81df6ae830495d7c4f62f503d4c43e77be1aa595457a4f0db4189365c51f993c400e249516e343c800636fe6dab74eaf3a1eee156993de9",
+      "fullName": "Sofía Mendoza",
+      "email": "sofia.m@lumicontrol.iot",
+      "role": "Supervisora de Hogar"
+    },
+    {
+      "id": 2,
+      "username": "admin",
+      "passwordSalt": "3c2cf4de487c29d3219e048d370e0dd2",
+      "passwordHash": "d93b6ad7007af5a1318ec379834ae61a10b6ca7cb04b487625f22863dc2c02a01734e4d3b6cedc20a9e36bf2decbd0bc1b5d419a692d28d6da746695605c22f2",
+      "fullName": "Carlos Mendoza",
+      "email": "carlos.m@lumicontrol.iot",
+      "role": "Admin IoT"
+    }
+  ],
+  "luminarias": [
+    {
+      "id": "lum-1",
+      "name": "Lámpara Estudio",
+      "room": "Sala de Estudio",
+      "roomType": "estudio",
+      "isOn": true,
+      "brightness": 85,
+      "colorTemp": 2900,
+      "powerWatts": 21.3,
+      "pirActive": true,
+      "sensorDistance": "1.2m",
+      "iconType": "lamp",
+      "updatedAt": "2026-11-13T00:10:01.635Z"
+    },
+    {
+      "id": "lum-2",
+      "name": "Plafón Suite",
+      "room": "Habitación Ppal",
+      "roomType": "dormitorio",
+      "isOn": true,
+      "brightness": 40,
+      "colorTemp": 3200,
+      "powerWatts": 10,
+      "modeLabel": "3200K Lectura",
+      "iconType": "ceiling",
+      "updatedAt": "2026-11-13T00:10:33.252Z"
+    },
+    {
+      "id": "lum-3",
+      "name": "Tira LED Mesa",
+      "room": "Sala de Estudio",
+      "roomType": "estudio",
+      "isOn": true,
+      "brightness": 80,
+      "colorTemp": 4000,
+      "powerWatts": 20,
+      "scheduleLabel": "Auto 20:00",
+      "iconType": "strip",
+      "updatedAt": "2026-11-13T00:10:34.117Z"
+    },
+    {
+      "id": "lum-4",
+      "name": "Focos Isla",
+      "room": "Cocina",
+      "roomType": "cocina",
+      "isOn": true,
+      "brightness": 100,
+      "colorTemp": 4500,
+      "powerWatts": 25,
+      "modeLabel": "4500K Neutra",
+      "iconType": "spot",
+      "updatedAt": "2026-11-13T00:10:05.624Z"
+    },
+    {
+      "id": "lum-5",
+      "name": "Aplique Cabecero",
+      "room": "Habitación Ppal",
+      "roomType": "dormitorio",
+      "isOn": true,
+      "brightness": 80,
+      "colorTemp": 2400,
+      "powerWatts": 20,
+      "modeLabel": "2400K Calidez",
+      "iconType": "bedside",
+      "updatedAt": "2026-11-13T00:10:36.799Z"
+    },
+    {
+      "id": "lum-6",
+      "name": "Tira Bajomuebles",
+      "room": "Cocina",
+      "roomType": "cocina",
+      "isOn": true,
+      "brightness": 80,
+      "colorTemp": 3000,
+      "powerWatts": 20,
+      "scheduleLabel": "Auto PIR",
+      "iconType": "strip",
+      "updatedAt": "2026-11-13T00:10:53.550Z"
+    }
+  ],
+  "escenas": [
+    {
+      "id": "sc-1",
+      "name": "Relax Atardecer",
+      "category": "favoritas",
+      "description": "4 lámparas vinculadas · Salón & Comedor",
+      "temperature": 2200,
+      "tempLabel": "2200 K",
+      "intensity": 35,
+      "powerWatts": 14.2,
+      "linkedLightsCount": 4,
+      "roomSummary": "Salón & Comedor",
+      "badge": "En vivo",
+      "badgeType": "live",
+      "footerNote": "Sincronización óptica suave",
+      "active": true,
+      "iconName": "sunset"
+    },
+    {
+      "id": "sc-2",
+      "name": "Modo Concentración",
+      "category": "favoritas",
+      "description": "Foco directo en escritorio y lectura",
+      "temperature": 5000,
+      "tempLabel": "5000 K",
+      "intensity": 90,
+      "powerWatts": 38.5,
+      "linkedLightsCount": 2,
+      "roomSummary": "Estudio & Despacho",
+      "badge": "PIR Activo",
+      "badgeType": "pir",
+      "footerNote": "Apaga al detectar 10 min de ausencia",
+      "active": false,
+      "iconName": "focus"
+    },
+    {
+      "id": "sc-3",
+      "name": "Cine & Gaming",
+      "category": "inmersivas",
+      "description": "Acentos cian & apagado perimetral",
+      "temperature": 6500,
+      "tempLabel": "Cian Dual",
+      "intensity": 15,
+      "powerWatts": 18,
+      "linkedLightsCount": 5,
+      "roomSummary": "Salón Home Cinema",
+      "badge": "Inmersivo",
+      "badgeType": "immersive",
+      "footerNote": "Vía HDMI Sync Box",
+      "active": false,
+      "iconName": "gamepad"
+    },
+    {
+      "id": "sc-4",
+      "name": "Luz Nocturna / Guía",
+      "category": "circadianas",
+      "description": "Pasillo, baño y zócalos de cortesía",
+      "temperature": 2000,
+      "tempLabel": "2000 K",
+      "intensity": 5,
+      "powerWatts": 4.8,
+      "linkedLightsCount": 3,
+      "roomSummary": "Pasillo & Baño",
+      "badge": "No molestar",
+      "badgeType": "dnd",
+      "footerNote": "Modo descanso (23:00 - 07:00)",
+      "active": false,
+      "iconName": "moon"
+    }
+  ],
+  "reglas": [
+    {
+      "id": "reg-1",
+      "targetDevice": "lum-1",
+      "deviceLabel": "Lámpara Estudio (PIR mmWave)",
+      "triggerType": "pir_mmwave",
+      "waitMinutes": 20,
+      "onlyNight": true,
+      "outsideGeofence": false,
+      "actionType": "warning_with_snooze",
+      "softDimming": true,
+      "savedKwhWeekly": 2.1,
+      "savedUsdWeekly": 0.42,
+      "isActive": true,
+      "createdAt": "2026-11-12T22:15:20.131Z"
+    },
+    {
+      "id": "reg-2",
+      "targetDevice": "all",
+      "deviceLabel": "Toda la Casa (Geocerca Wi-Fi)",
+      "triggerType": "geofence",
+      "waitMinutes": 10,
+      "onlyNight": false,
+      "outsideGeofence": true,
+      "actionType": "direct_cut",
+      "softDimming": false,
+      "savedKwhWeekly": 3.8,
+      "savedUsdWeekly": 0.76,
+      "isActive": true,
+      "createdAt": "2026-11-12T22:15:20.131Z"
+    }
+  ],
+  "incidentes": [
+    {
+      "id": "inc-1",
+      "title": "Plafón Cocina",
+      "timeAgo": "Hace 22 min",
+      "specs": "45W LED",
+      "description": "Auto-apagado ejecutado tras 30 min sin ocupación detectada en zona de encimera.",
+      "type": "auto-resolved",
+      "typeLabel": "Auto-resuelto",
+      "metricLabel": "Ahorro estimado: 0.04 kWh",
+      "canUndo": true
+    },
+    {
+      "id": "inc-2",
+      "title": "Foco Pasillo",
+      "timeAgo": "Hace 1h 15m",
+      "specs": "Entrada principal",
+      "description": "Apagado remoto ejecutado al desconectarse dispositivos familiares de la red local (Fuera de casa).",
+      "type": "geofence",
+      "typeLabel": "Geocerca Wi-Fi",
+      "metricLabel": "Trigger: RSSI de red bajo umbral",
+      "canUndo": false
+    },
+    {
+      "id": "inc-3",
+      "title": "Luz Escritorio",
+      "timeAgo": "Ayer 23:45",
+      "specs": "Dormitorio 1",
+      "description": "Aviso nocturno atendido y confirmado manualmente desde la app por usuario Administrador.",
+      "type": "resolved",
+      "typeLabel": "Resuelto",
+      "metricLabel": "Acción manual vía push",
+      "canUndo": false
+    }
+  ],
+  "devices": [
+    {
+      "id": "android-1",
+      "name": "Android 1 · Pixel 9 Pro",
+      "model": "Android 15 (Kotlin App)",
+      "channel": "bluetooth",
+      "status": "online",
+      "rssiDbm": -42,
+      "batteryPct": 88,
+      "lastSeen": "2026-11-12T22:15:20.131Z",
+      "lastCommand": "BT LINK ESP32_LumiControl"
+    },
+    {
+      "id": "android-2",
+      "name": "Android 2 · Galaxy S24",
+      "model": "Control Central Web",
+      "channel": "bluetooth",
+      "status": "online",
+      "rssiDbm": -40,
+      "batteryPct": 100,
+      "lastSeen": "2026-11-13T00:09:16.132Z"
+    }
+  ],
+  "sensorReadings": [
+    {
+      "id": "sr-1",
+      "sensorType": "pir_mmwave",
+      "zone": "Estudio",
+      "value": 1,
+      "unit": "presencia",
+      "deviceId": "android-1",
+      "deviceName": "Android 1 · Pixel 9 Pro",
+      "channel": "bluetooth",
+      "timestamp": "2026-11-12T22:12:20.131Z"
+    },
+    {
+      "id": "sr-2",
+      "sensorType": "luxometro",
+      "zone": "Estudio",
+      "value": 420,
+      "unit": "lux",
+      "deviceId": "android-1",
+      "deviceName": "Android 1 · Pixel 9 Pro",
+      "channel": "bluetooth",
+      "timestamp": "2026-11-12T22:13:20.131Z"
+    },
+    {
+      "id": "sr-3",
+      "sensorType": "potencia_w",
+      "zone": "Cocina",
+      "value": 16,
+      "unit": "W",
+      "deviceId": "android-2",
+      "deviceName": "Android 2 · Galaxy S24",
+      "channel": "wifi",
+      "timestamp": "2026-11-12T22:14:20.131Z"
+    },
+    {
+      "id": "sr-4",
+      "sensorType": "rssi_bt",
+      "zone": "Dormitorio",
+      "value": -44,
+      "unit": "dBm",
+      "deviceId": "android-2",
+      "deviceName": "Android 2 · Galaxy S24",
+      "channel": "bluetooth",
+      "timestamp": "2026-11-12T22:15:20.131Z"
+    }
+  ]
+}

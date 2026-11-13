@@ -20,8 +20,23 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
+const SOUND_STORAGE_KEY = 'lumi_sound_alerts';
+
+export function isSoundEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  return localStorage.getItem(SOUND_STORAGE_KEY) !== 'false';
+}
+
+export function setSoundEnabled(enabled: boolean): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(SOUND_STORAGE_KEY, String(enabled));
+  }
+}
+
 export function playRelayClick(isTurnOn: boolean = true) {
   try {
+    if (!isSoundEnabled()) return;
+
     // Vibración háptica en celulares Android
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(isTurnOn ? [30, 20, 25] : [20]);

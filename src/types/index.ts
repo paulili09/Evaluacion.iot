@@ -30,6 +30,9 @@ export interface Escena {
   footerNote: string;
   active: boolean;
   iconName: string;
+  targetZones?: ('estudio' | 'dormitorio' | 'cocina' | 'salon')[];
+  transitionType?: 'smooth' | 'instant';
+  isCustom?: boolean;
 }
 
 export interface Incidente {
